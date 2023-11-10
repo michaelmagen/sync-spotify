@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import {
-		PUBLIC_API_URL,
-		PUBLIC_SPOTIFY_CLIENT_ID,
-		PUBLIC_REDIRECT_URI
-	} from '$env/static/public';
+	import * as Alert from '$lib/components/ui/alert';
+	import { AlertCircle } from 'lucide-svelte';
+	import { PUBLIC_SPOTIFY_CLIENT_ID, PUBLIC_REDIRECT_URI } from '$env/static/public';
 	import queryString from 'query-string';
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+
+	let showFailedAuth = false;
 
 	function getAuthURL() {
 		const state = 'fddf';
@@ -24,8 +26,23 @@
 
 		return url;
 	}
+
+	onMount(() => {
+		// If failed to authroize, show error message
+		const errorParam = $page.url.searchParams.get('error');
+		if (errorParam === 'auth_failed') {
+			showFailedAuth = true;
+		}
+	});
 </script>
 
-<div class="flex justify-center items-center px-10 py-20">
+<div class="flex flex-col gap-5 justify-center items-center px-10 py-20">
+	{#if showFailedAuth}
+		<Alert.Root variant="destructive" class="max-w-sm">
+			<AlertCircle class="h-4 w-4" />
+			<Alert.Title>Failed to login!</Alert.Title>
+			<Alert.Description>Please try again.</Alert.Description>
+		</Alert.Root>
+	{/if}
 	<Button variant="default" size="lg" href={getAuthURL()}>Login With Spotify</Button>
 </div>

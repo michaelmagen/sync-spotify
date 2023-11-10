@@ -2,7 +2,7 @@ package routes
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -10,6 +10,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/michaelmagen/sync-spotify/config"
 )
+
+var ctx = context.Background()
+
+// TODO: Replace with env variable
+var frontendURL = "http://localhost:5173"
 
 func AuthRoute(r chi.Router) {
 	r.Get("/", exchangeAuthorizationCode)
@@ -20,11 +25,19 @@ func AuthRoute(r chi.Router) {
 // Puts them in cookies and redirects back to front end
 func exchangeAuthorizationCode(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
+	if code == "" {
+		log.Println("Authorization code not provided")
+		// Redirect to frontend login page with error in search params
+		http.Redirect(w, r, frontendURL+"/login?error=auth_failed", http.StatusFound)
+		return
+	}
+
 	// Exchange the authorization code for an access token
-	token, err := config.NewSpotifyOauthConfig().Exchange(context.Background(), code)
+	token, err := config.NewSpotifyOauthConfig().Exchange(ctx, code)
 	if err != nil {
-		log.Println(err)
-		http.Error(w, fmt.Sprintf("Failed to exchange code: %v", err), http.StatusInternalServerError)
+		log.Println("Failed to exchange code:", err)
+		// Redirect to frontend login page with error in search params
+		http.Redirect(w, r, frontendURL+"/login?error=auth_failed", http.StatusFound)
 		return
 	}
 	// Set the access token in a cookie
@@ -32,23 +45,29 @@ func exchangeAuthorizationCode(w http.ResponseWriter, r *http.Request) {
 		Name:  "access_token",
 		Value: token.AccessToken,
 		Path:  "/",
-	})
-	// Convert expiration time, to duration until experation in seconds
-	expiresIn := token.Expiry.Sub(time.Now()).Seconds()
-
-	// Set the expiry time in a cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:  "token_expiry",
-		Value: fmt.Sprintf("%d", int(expiresIn)),
-		Path:  "/",
+		// Cookie should expire after 5 minutes
+		Expires: time.Now().Add(time.Minute * 5),
 	})
 
-	// Set the refresh token in a cookie
-	http.SetCookie(w, &http.Cookie{
-		Name:  "refresh_token",
-		Value: token.RefreshToken,
-		Path:  "/",
-	})
+	// Convert token to json
+	tokenJSON, err := json.Marshal(token)
+	if err != nil {
+		log.Println("Failed to convert token to JSON:", err)
+		// Redirect to frontend login page with error in search params
+		http.Redirect(w, r, frontendURL+"/login?error=auth_failed", http.StatusFound)
+		return
+	}
+
+	// Put access token in to redis store
+	// In redis: access_token string -> full token json
+	err = config.RedisClient.Set(ctx, token.AccessToken, tokenJSON, 0).Err()
+	if err != nil {
+		log.Println("Error adding token to redis:", err)
+		// Redirect to frontend login page with error in search params
+		http.Redirect(w, r, frontendURL+"/login?error=auth_failed", http.StatusFound)
+		return
+	}
+
 	// Redirect the user to the FrontendURL
 	http.Redirect(w, r, "http://localhost:5173", http.StatusFound)
 }

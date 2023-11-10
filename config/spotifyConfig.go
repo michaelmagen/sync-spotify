@@ -1,8 +1,6 @@
 package config
 
 import (
-	"os"
-
 	"golang.org/x/oauth2"
 )
 
@@ -23,13 +21,4 @@ func NewSpotifyOauthConfig() *oauth2.Config {
 		Scopes:       []string{"user-read-email", "user-read-private", "streaming", "user-library-modify", "user-library-read"}, // Add required scopes
 		Endpoint:     spotifyEndpoint,
 	}
-}
-
-// Simple helper function to read an environment or return a default value
-func getEnv(key string, defaultVal string) string {
-	if value, exists := os.LookupEnv(key); exists {
-		return value
-	}
-
-	return defaultVal
 }

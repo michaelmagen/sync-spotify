@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { accessToken, refreshToken } from '$lib/auth';
+import { accessToken } from '$lib/auth';
 import { get } from 'svelte/store';
 
 export const load = ({ request }) => {
@@ -21,18 +21,10 @@ export const load = ({ request }) => {
 	}
 	// Get values from cookie map
 	const newAccessToken = externalCookieMap.get('access_token');
-	const newRefreshToken = externalCookieMap.get('refresh_token');
-	const tokenExpiry = externalCookieMap.get('token_expiry');
-	console.log('the token expiry:', tokenExpiry);
 	// Set the svelte store vars
 	if (newAccessToken) {
 		accessToken.set(newAccessToken);
 		console.log('the access Token is now set to:', get(accessToken));
-	}
-
-	if (newRefreshToken) {
-		refreshToken.set(newRefreshToken);
-		console.log('the refresh token is now set to:', get(refreshToken));
 	}
 
 	// If there is no access token in the store, redirect to login
