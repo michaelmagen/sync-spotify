@@ -2,19 +2,27 @@ package config
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"github.com/go-redis/redis/v8"
 	"log"
 	"os"
+
+	"github.com/go-redis/redis/v8"
+	"golang.org/x/oauth2"
 
 	"github.com/joho/godotenv"
 )
 
 var ctx = context.Background()
 
-var RedisClient = newRedisClient()
+// CustomRedisClient embeds *redis.Client and adds custom methods
+type CustomRedisClient struct {
+	*redis.Client
+}
 
-func newRedisClient() *redis.Client {
+var RedisClient CustomRedisClient = newRedisClient()
+
+func newRedisClient() CustomRedisClient {
 	opt, _ := redis.ParseURL(getEnv("REDIS_CONNECTION_URL", ""))
 	client := redis.NewClient(opt)
 
@@ -25,7 +33,7 @@ func newRedisClient() *redis.Client {
 	}
 	fmt.Println("Connected to Redis:", pong)
 
-	return client
+	return CustomRedisClient{client}
 }
 
 // Simple helper function to read an environment or return a default value
@@ -40,4 +48,20 @@ func getEnv(key string, defaultVal string) string {
 	}
 
 	return defaultVal
+}
+
+func (rc *CustomRedisClient) SetToken(ctx context.Context, token oauth2.Token) error {
+	// Marshal the OAuth2 token to JSON
+	tokenJSON, err := json.Marshal(token)
+	if err != nil {
+		return err
+	}
+
+	// Set the JSON token in Redis with the access code as the key
+	err = rc.Set(ctx, token.AccessToken, tokenJSON, 0).Err()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -13,7 +13,9 @@ var spotifyEndpoint = oauth2.Endpoint{
 	TokenURL: "https://accounts.spotify.com/api/token",
 }
 
-func NewSpotifyOauthConfig() *oauth2.Config {
+var OauthConfig = newSpotifyOauthConfig()
+
+func newSpotifyOauthConfig() *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     getEnv("SPOTIFY_CLIENT_ID", "word"),
 		ClientSecret: getEnv("SPOTIFY_CLIENT_SECRET", ""),

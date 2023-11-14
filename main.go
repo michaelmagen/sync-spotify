@@ -16,6 +16,7 @@ func main() {
 
 	// Routes
 	r.Route("/auth", routes.AuthRoute)
+	r.Route("/song", routes.SongRoute)
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("welcome"))
 	})

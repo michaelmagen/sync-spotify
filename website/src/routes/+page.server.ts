@@ -2,25 +2,20 @@ import { redirect } from '@sveltejs/kit';
 import { accessToken } from '$lib/auth';
 import { get } from 'svelte/store';
 
-export const load = ({ request }) => {
+export const load = ({ cookies }) => {
+	// TODO: Make sure this function works properly once everything is set up
+	// This may be outdated, since the server automatically refreshes for you, then deletes the old access token.
+	console.log('the cookeies has', cookies.getAll());
+
 	const storeAccessToken = get(accessToken);
 	// If there already is a token in store, we know the user is logged in so stop here
 	if (storeAccessToken) {
 		console.log('the access token is already set');
 		return;
 	}
-	// Get cookies from external API
-	const externalCookies = request.headers.get('cookie')?.split('; ');
-	const externalCookieMap = new Map<string, string>();
-	// Create map of cookies
-	if (externalCookies) {
-		for (const cookie of externalCookies) {
-			const [key, value] = cookie.split('=');
-			externalCookieMap.set(key, value);
-		}
-	}
+
 	// Get values from cookie map
-	const newAccessToken = externalCookieMap.get('access_token');
+	const newAccessToken = cookies.get('access_token');
 	// Set the svelte store vars
 	if (newAccessToken) {
 		accessToken.set(newAccessToken);

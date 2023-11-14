@@ -1,8 +1,6 @@
 package routes
 
 import (
-	"context"
-	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -10,8 +8,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/michaelmagen/sync-spotify/config"
 )
-
-var ctx = context.Background()
 
 // TODO: Replace with env variable
 var frontendURL = "http://localhost:5173"
@@ -33,7 +29,7 @@ func exchangeAuthorizationCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Exchange the authorization code for an access token
-	token, err := config.NewSpotifyOauthConfig().Exchange(ctx, code)
+	token, err := config.OauthConfig.Exchange(r.Context(), code)
 	if err != nil {
 		log.Println("Failed to exchange code:", err)
 		// Redirect to frontend login page with error in search params
@@ -49,18 +45,28 @@ func exchangeAuthorizationCode(w http.ResponseWriter, r *http.Request) {
 		Expires: time.Now().Add(time.Minute * 5),
 	})
 
-	// Convert token to json
-	tokenJSON, err := json.Marshal(token)
-	if err != nil {
-		log.Println("Failed to convert token to JSON:", err)
-		// Redirect to frontend login page with error in search params
-		http.Redirect(w, r, frontendURL+"/login?error=auth_failed", http.StatusFound)
-		return
-	}
+	/*
+		// Convert token to json
+		tokenJSON, err := json.Marshal(token)
+		if err != nil {
+			log.Println("Failed to convert token to JSON:", err)
+			// Redirect to frontend login page with error in search params
+			http.Redirect(w, r, frontendURL+"/login?error=auth_failed", http.StatusFound)
+			return
+		}
 
-	// Put access token in to redis store
-	// In redis: access_token string -> full token json
-	err = config.RedisClient.Set(ctx, token.AccessToken, tokenJSON, 0).Err()
+		// Put access token in to redis store
+		// In redis: access_token string -> full token json
+		err = config.RedisClient.Set(r.Context(), token.AccessToken, tokenJSON, 0).Err()
+		if err != nil {
+			log.Println("Error adding token to redis:", err)
+			// Redirect to frontend login page with error in search params
+			http.Redirect(w, r, frontendURL+"/login?error=auth_failed", http.StatusFound)
+			return
+		}
+	*/
+
+	err = config.RedisClient.SetToken(r.Context(), *token)
 	if err != nil {
 		log.Println("Error adding token to redis:", err)
 		// Redirect to frontend login page with error in search params
